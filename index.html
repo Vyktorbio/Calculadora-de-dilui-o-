@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title></title>
+  <!-- Tailwind CDN (for quick professional styling) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- jsPDF for optional PDF export -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <style>
+    :root{
+      --bg: #0b1020;
+      --card: rgba(255,255,255,0.06);
+      --card2: rgba(255,255,255,0.04);
+      --text: #e6e9ef;
+      --muted: #a9b0bf;
+      --accent: #6ee7ff;
+      --accent2: #a78bfa;
+      --danger: #ff7a7a;
+      --ok: #7dffb3;
+    }
+    body{ background: radial-gradient(1200px circle at 10% -10%, #141a33, transparent 60%),
+                   radial-gradient(900px circle at 110% 10%, #111a38, transparent 50%),
+                   var(--bg); color: var(--text); }
+    .glass{ background: var(--card); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(8px); }
+    .glass2{ background: var(--card2); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(6px); }
+    .input{
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--text);
+      outline: none;
+    }
+    .input:focus{
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(110,231,255,0.15);
+    }
+    .pill{
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--muted);
+    }
+    .pill.active{
+      color: var(--text);
+      border-color: rgba(167,139,250,0.75);
+      box-shadow: inset 0 0 0 1px rgba(167,139,250,0.4);
+      background: rgba(167,139,250,0.12);
+    }
+    .btn{
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      transition: 0.15s ease;
+    }
+    .btn:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,0.3); }
+    .btn-primary{
+      background: linear-gradient(180deg, rgba(110,231,255,0.25), rgba(110,231,255,0.08));
+      border-color: rgba(110,231,255,0.6);
+      color: #eaffff;
+    }
+    .btn-success{
+      background: linear-gradient(180deg, rgba(125,255,179,0.25), rgba(125,255,179,0.08));
+      border-color: rgba(125,255,179,0.6);
+      color: #ecfff5;
+    }
+    .btn-danger{
+      background: linear-gradient(180deg, rgba(255,122,122,0.25), rgba(255,122,122,0.08));
+      border-color: rgba(255,122,122,0.6);
+      color: #fff0f0;
+    }
+    .kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="grid grid-cols-12 gap-4">
+
+      <!-- SIDEBAR -->
+      <aside class="col-span-12 lg:col-span-4 glass rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-lg font-semibold tracking-wide">Configuração</div>
+          <div class="text-sm text-slate-300">V2</div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex gap-2 mb-4">
+          <button id="tabBtn-ppm" class="pill active rounded-xl px-3 py-2 text-sm font-medium w-full">PPM (Lab)</button>
+          <button id="tabBtn-campo" class="pill rounded-xl px-3 py-2 text-sm font-medium w-full">Campo (ha)</button>
+          <button id="tabBtn-tank" class="pill rounded-xl px-3 py-2 text-sm font-medium w-full">Tank mix</button>
+        </div>
+
+        <!-- PPM TAB -->
+        <section id="tab-ppm" class="space-y-3">
+          <div class="glass2 rounded-xl p-3 space-y-3">
+            <div>
+              <label class="text-sm text-slate-300">Volume final (mL)</label>
+              <input id="ppm-meta-vol" type="number" class="input w-full rounded-lg px-3 py-2 mt-1" value="100" min="0" step="0.1">
+            </div>
+            <div>
+              <label class="text-sm text-slate-300">Concentração desejada (ppm)</label>
+              <input id="ppm-meta-ppm" type="number" class="input w-full rounded-lg px-3 py-2 mt-1" value="150" min="0" step="0.1">
+            </div>
+
+            <div>
+              <label class="text-sm text-slate-300">O que você tem na mão?</label>
+              <select id="ppm-fonte-tipo" class="input w-full rounded-lg px-3 py-2 mt-1">
+                <option>Rótulo (g/L ou g/kg)</option>
+                <option>Solução Mãe (ppm)</option>
+                <option>Pó Puro (100%)</option>
+              </select>
+            </div>
+
+            <div id="ppm-fonte-valor-wrap">
+              <label id="ppm-fonte-valor-lab" class="text-sm text-slate-300">Valor do rótulo (ex.: 340, 750)</label>
+              <input id="ppm-fonte-valor" type="number" class="input w-full rounded-lg px-3 py-2 mt-1" value="340" min="0" step="0.1">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-sm text-slate-300">Pureza (%) (opcional)</label>
+                <input id="ppm-pureza" type="number" class="input w-full rounded-lg px-3 py-2 mt-1" placeholder="100" min="0" max="100" step="0.1">
+              </div>
+              <div>
+                <label class="text-sm text-slate-300">Densidade (g/mL) (opcional)</label>
+                <input id="ppm-densidade" type="number" class="input w-full rounded-lg px-3 py-2 mt-1" placeholder="1.00" min="0" step="0.01">
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <button id="btn-ppm" class="btn btn-primary rounded-xl px-4 py-2 w-full font-semibold">Calcular receita</button>
+            <button id="btn-save-ppm" class="btn rounded-xl px-4 py-2 font-semibold">Salvar</button>
+          </div>
+        </section>
+
+        <!-- CAMPO TAB -->
+        <section id="tab-campo" class="space-y-3 hidden">
+          <div class="glass2 rounded-xl p-3 space-y-3">
+            <div>
+              <label class="text-sm text-slate-300">Volume do pote no lab (mL)</label>
+              <input id="campo-vol-lab" type="number" class="input w-full rounded-lg px-3 py-2 mt-1" value="50" min="0" step="0.1">
+            </div>
+            <div>
+              <label class="text-sm text-slate-300">Vazão do trator (L/ha)</label>
+              <input id="campo-vazao" type="number" class="input w-full rounded-lg px-3 py-2 mt-1" value="100" min="0" step="1">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-sm text-slate-300">Dose</label>
+                <input id="campo-dose" type="number" class="input w-full rounded-lg px-3 py-2 mt-1" value="200" min="0" step="0.1">
+              </div>
+              <div>
+                <label class="text-sm text-slate-300">Unidade</label>
+                <select id="campo-unid" class="input w-full rounded-lg px-3 py-2 mt-1">
+                  <option>mL/ha</option>
+                  <option>L/ha</option>
+                  <option>g/ha</option>
+                  <option>kg/ha</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-sm text-slate-300">Dose se refere a:</label>
+              <select id="campo-basis" class="input w-full rounded-lg px-3 py-2 mt-1">
+                <option value="formulado">Produto formulado</option>
+                <option value="ia">Ingrediente ativo (i.a.)</option>
+              </select>
+            </div>
+
+            <div id="campo-ia-wrap" class="hidden">
+              <label class="text-sm text-slate-300">% i.a. no produto</label>
+              <input id="campo-ia-pct" type="number" class="input w-full rounded-lg px-3 py-2 mt-1" placeholder="ex.: 20" min="0" max="100" step="0.1">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-sm text-slate-300">Pureza (%) (opcional)</label>
+                <input id="campo-pureza" type="number" class="input w-full rounded-lg px-3 py-2 mt-1" placeholder="100" min="0" max="100" step="0.1">
+              </div>
+              <div>
+                <label class="text-sm text-slate-300">Densidade (g/mL) (opcional)</label>
+                <input id="campo-densidade" type="number" class="input w-full rounded-lg px-3 py-2 mt-1" placeholder="1.00" min="0" step="0.01">
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <button id="btn-campo" class="btn btn-success rounded-xl px-4 py-2 w-full font-semibold">Converter para lab</button>
+            <button id="btn-save-campo" class="btn rounded-xl px-4 py-2 font-semibold">Salvar</button>
+          </div>
+        </section>
+
+        <!-- TANK MIX TAB -->
+        <section id="tab-tank" class="space-y-3 hidden">
+          <div class="glass2 rounded-xl p-3 space-y-3">
+            <div>
+              <label class="text-sm text-slate-300">Volume do pote no lab (mL)</label>
+              <input id="tank-vol-lab" type="number" class="input w-full rounded-lg px-3 py-2 mt-1" value="100" min="0" step="0.1">
+            </div>
+            <div>
+              <label class="text-sm text-slate-300">Vazão do trator (L/ha)</label>
+              <input id="tank-vazao" type="number" class="input w-full rounded-lg px-3 py-2 mt-1" value="100" min="0" step="1">
+            </div>
+
+            <div class="flex items-center justify-between">
+              <div class="text-sm text-slate-300">Produtos no tank mix</div>
+              <button id="btn-add-prod" class="btn rounded-lg px-3 py-1 text-sm">+ adicionar</button>
+            </div>
+
+            <div id="tank-prod-list" class="space-y-2"></div>
+
+            <div class="text-xs text-slate-400">
+              Dica: cada produto pode estar em mL/ha, L/ha, g/ha ou kg/ha.  
+              O app converte todos para a quantidade equivalente no volume de lab.
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <button id="btn-tank" class="btn btn-success rounded-xl px-4 py-2 w-full font-semibold">Calcular tank mix</button>
+            <button id="btn-save-tank" class="btn rounded-xl px-4 py-2 font-semibold">Salvar</button>
+          </div>
+        </section>
+
+        <!-- HISTORY -->
+        <hr class="my-4 border-white/10">
+        <section>
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-sm font-semibold text-slate-200">Histórico</div>
+            <div class="flex gap-2">
+              <button id="btn-export-json" class="btn rounded-lg px-2 py-1 text-xs">Exportar JSON</button>
+              <button id="btn-clear-hist" class="btn btn-danger rounded-lg px-2 py-1 text-xs">Limpar</button>
+            </div>
+          </div>
+          <div id="hist-list" class="space-y-2 max-h-[260px] overflow-auto pr-1"></div>
+        </section>
+      </aside>
+
+      <!-- MAIN -->
+      <main class="col-span-12 lg:col-span-8 glass rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-lg font-semibold">Resultado / Protocolo</div>
+          <div class="flex gap-2">
+            <button id="btn-copy" class="btn rounded-xl px-3 py-2 text-sm">Copiar</button>
+            <button id="btn-pdf" class="btn rounded-xl px-3 py-2 text-sm">Exportar PDF</button>
+          </div>
+        </div>
+        <pre id="output" class="glass2 rounded-xl p-4 min-h-[420px] whitespace-pre-wrap kbd text-[15px] leading-relaxed">Aguardando cálculo... preencha os dados ao lado.</pre>
+      </main>
+    </div>
+  </div>
+
+<script>
+/* ============================================================================
+   UTIL
+============================================================================ */
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+const HIST_KEY = "bioensaio_hist_v2";
+
+function fmt(n, d=4){
+  if (n === null || n === undefined || Number.isNaN(n)) return "-";
+  return Number(n).toFixed(d).replace(/\.?0+$/,""); // trim zeros
+}
+function nowISO(){
+  return new Date().toISOString().slice(0,19).replace("T"," ");
+}
+function parseOptNum(v, def){
+  const x = parseFloat(v);
+  return Number.isFinite(x) ? x : def;
+}
+function unitToMlOrG(dose, unid){
+  // returns [value_in_base, base_unit]
+  // base: mL/ha for liquids, g/ha for solids
+  if (unid === "L/ha") return [dose*1000, "mL/ha"];
+  if (unid === "kg/ha") return [dose*1000, "g/ha"];
+  return [dose, unid]; // mL/ha or g/ha
+}
+function isLiquidUnit(unid){
+  return unid.includes("L/ha") || unid.includes("mL/ha");
+}
+
+/* ============================================================================
+   LOGICAS
+============================================================================ */
+function calcPPM(meta_ppm, meta_vol_ml, tipo_fonte, valor_fonte, purezaPct, densidade){
+  let lines = [];
+  lines.push("--------------------------------------------------");
+  lines.push("RELATORIO DE PREPARO (PPM)");
+  lines.push("Data: " + nowISO());
+  lines.push("--------------------------------------------------");
+
+  let conc_origem_ppm = 0;
+  if (tipo_fonte === "Rótulo (g/L ou g/kg)"){
+    conc_origem_ppm = valor_fonte * 1000;
+    lines.push(`FONTE: Produto Comercial (${valor_fonte} g/L ou g/kg)`);
+  } else if (tipo_fonte === "Solução Mãe (ppm)"){
+    conc_origem_ppm = valor_fonte;
+    lines.push(`FONTE: Solucao Mae (${valor_fonte} ppm)`);
+  } else {
+    conc_origem_ppm = 1000000;
+    lines.push("FONTE: Reagente Puro (100%)");
+  }
+
+  lines.push(`META: ${meta_vol_ml} mL a ${meta_ppm} ppm`);
+  lines.push("--------------------------------------------------");
+
+  let qtd_pegar_ml = (meta_ppm * meta_vol_ml) / conc_origem_ppm; // mL if liquid, mg if pure powder
+  let pureza = parseOptNum(purezaPct, 100);
+  let dens = parseOptNum(densidade, 1);
+
+  lines.push(">>> INSTRUCAO:");
+
+  if (tipo_fonte === "Pó Puro (100%)"){
+    let mg_teor = qtd_pegar_ml; // mg
+    let mg_corr = mg_teor / (pureza/100);
+    lines.push(`1. PESAR: ${fmt(mg_corr)} mg (miligramas)`);
+    if (pureza !== 100) lines.push(`   (corrigido para pureza ${pureza}%)`);
+    lines.push(`   (Equivalente a ${fmt(mg_corr/1000)} g)`);
+    lines.push(`2. ADICIONAR AGUA (Solvente): ${fmt(meta_vol_ml)} mL`);
+  } else {
+    // liquid or labeled solid: treat qtd_pegar_ml as mL of product
+    let vol_prod = qtd_pegar_ml;
+    if (dens !== 1){
+      lines.push(`* Densidade informada: ${dens} g/mL (so para referencia)`);
+    }
+    lines.push(`1. PIPETAR: ${fmt(vol_prod)} mL`);
+    if (vol_prod < 1) lines.push(`   (Equivalente a ${fmt(vol_prod*1000)} uL)`);
+    lines.push("   *Se for solido formulado (WG/WP), pesar em gramas.");
+    let vol_agua = meta_vol_ml - vol_prod;
+    lines.push(`2. COMPLETAR com agua ate ${fmt(vol_agua)} mL`);
+  }
+
+  lines.push("--------------------------------------------------");
+  return lines.join("\n");
+}
+
+function calcCampo(dose, unidade, vazao, vol_lab, basis, iaPct, purezaPct, densidade){
+  let lines = [];
+  lines.push("--------------------------------------------------");
+  lines.push("CONVERSAO CAMPO -> BANCADA");
+  lines.push("Data: " + nowISO());
+  lines.push("--------------------------------------------------");
+
+  let dose_calc = dose;
+  if (unidade === "L/ha" || unidade === "kg/ha") dose_calc = dose * 1000;
+
+  // Se dose for i.a., converte para formulado usando % i.a.
+  if (basis === "ia"){
+    let p = parseOptNum(iaPct, NaN);
+    if (!Number.isFinite(p) || p<=0) throw new Error("Informe o % de i.a. para dose baseada em ingrediente ativo.");
+    dose_calc = dose_calc / (p/100);
+    lines.push(`Dose baseada em i.a. -> equivalente formulado usando ${p}% i.a.`);
+  }
+
+  let conc_relativa = dose_calc / (vazao * 1000); // fração (mL/mL da calda)
+  let qtd_final = vol_lab * conc_relativa;
+  let porcentagem = conc_relativa * 100;
+
+  let pureza = parseOptNum(purezaPct, 100);
+  let dens = parseOptNum(densidade, 1);
+
+  lines.push("DADOS DE CAMPO:");
+  lines.push(`Dose: ${dose} ${unidade} | Vazao: ${vazao} L/ha`);
+  lines.push(`Concentracao da calda: ~ ${fmt(porcentagem,3)} %`);
+  lines.push("--------------------------------------------------");
+  lines.push(`>>> PARA FAZER ${vol_lab} mL NO LAB:`);
+
+  let unidade_final = isLiquidUnit(unidade) ? "mL" : "g";
+  let acao = (unidade_final === "mL") ? "PIPETAR" : "PESAR";
+
+  // Se for sólido, qtd_final está em "g" equivalente? na lógica original era g/mg da calda.
+  // Aplicar correção de pureza apenas se for sólido.
+  if (acao === "PESAR"){
+    let qtd_corr = qtd_final / (pureza/100);
+    lines.push(`1. ${acao}: ${fmt(qtd_corr)} g`);
+    if (pureza !== 100) lines.push(`   (corrigido para pureza ${pureza}%)`);
+  } else {
+    lines.push(`1. ${acao}: ${fmt(qtd_final)} mL`);
+    if (qtd_final < 1) lines.push(`   (= ${fmt(qtd_final*1000)} uL)`);
+    if (dens !== 1) lines.push(`   (densidade informada: ${dens} g/mL)`);
+  }
+
+  lines.push(`2. COMPLETAR volume com agua ate ${vol_lab} mL`);
+  lines.push("--------------------------------------------------");
+  return lines.join("\n");
+}
+
+function calcTankMix(produtos, vazao, vol_lab){
+  let lines = [];
+  lines.push("--------------------------------------------------");
+  lines.push("TANK MIX CAMPO -> BANCADA");
+  lines.push("Data: " + nowISO());
+  lines.push("--------------------------------------------------");
+  lines.push(`Vazao: ${vazao} L/ha | Volume lab: ${vol_lab} mL`);
+  lines.push("--------------------------------------------------");
+  lines.push(">>> PARA FAZER NO LAB:");
+
+  let totalVolProdutos = 0;
+
+  produtos.forEach((p, i)=>{
+    if (!p.nome) p.nome = `Produto ${i+1}`;
+    let dose = p.dose;
+    let unid = p.unid;
+    let basis = p.basis;
+    let iaPct = p.iaPct;
+
+    let [dose_base, base_unit] = unitToMlOrG(dose, unid);
+
+    if (basis === "ia"){
+      let pct = parseOptNum(iaPct, NaN);
+      if (!Number.isFinite(pct) || pct<=0) throw new Error(`Informe % i.a. para ${p.nome}.`);
+      dose_base = dose_base / (pct/100);
+      lines.push(`- ${p.nome}: dose i.a. -> equivalente formulado (${pct}% i.a.)`);
+    }
+
+    let conc_rel = dose_base / (vazao * 1000);
+    let qtd_lab = vol_lab * conc_rel;
+
+    let isLiquid = isLiquidUnit(unid);
+    if (isLiquid){
+      totalVolProdutos += qtd_lab;
+      lines.push(`${i+1}. ${p.nome}: PIPETAR ${fmt(qtd_lab)} mL (${unid})`);
+      if (qtd_lab < 1) lines.push(`   (= ${fmt(qtd_lab*1000)} uL)`);
+    } else {
+      lines.push(`${i+1}. ${p.nome}: PESAR ${fmt(qtd_lab)} g (${unid})`);
+    }
+  });
+
+  let agua = vol_lab - totalVolProdutos;
+  if (agua < 0) agua = 0;
+  lines.push(`\nCompletar com agua ate ${fmt(agua)} mL (ajuste final).`);
+  lines.push("--------------------------------------------------");
+  return lines.join("\n");
+}
+
+/* ============================================================================
+   HISTORICO
+============================================================================ */
+function loadHist(){
+  try{ return JSON.parse(localStorage.getItem(HIST_KEY)) || []; }
+  catch(e){ return []; }
+}
+function saveHist(hist){
+  localStorage.setItem(HIST_KEY, JSON.stringify(hist.slice(0,80)));
+}
+function addHist(entry){
+  const hist = loadHist();
+  hist.unshift(entry);
+  saveHist(hist);
+  renderHist();
+}
+function renderHist(){
+  const hist = loadHist();
+  const wrap = $("#hist-list");
+  wrap.innerHTML = "";
+  if (hist.length === 0){
+    wrap.innerHTML = `<div class="text-xs text-slate-400">Sem historico ainda.</div>`;
+    return;
+  }
+  hist.forEach((h, idx)=>{
+    const div = document.createElement("div");
+    div.className = "glass2 rounded-lg p-2 cursor-pointer hover:border-white/20 border border-white/10";
+    div.innerHTML = `
+      <div class="text-xs text-slate-300 flex justify-between">
+        <span>${h.tipo}</span><span>${h.data}</span>
+      </div>
+      <div class="text-sm font-medium truncate">${h.titulo || "(sem titulo)"}</div>
+    `;
+    div.addEventListener("click", ()=>{
+      $("#output").textContent = h.texto;
+      // jump to tab
+      showTab(h.tipo === "PPM" ? "ppm" : h.tipo === "Campo" ? "campo" : "tank");
+    });
+    wrap.appendChild(div);
+  });
+}
+
+/* ============================================================================
+   UI / TABS
+============================================================================ */
+function showTab(name){
+  ["ppm","campo","tank"].forEach(n=>{
+    $("#tab-"+n).classList.toggle("hidden", n!==name);
+    $("#tabBtn-"+n).classList.toggle("active", n===name);
+  });
+}
+$("#tabBtn-ppm").onclick = ()=>showTab("ppm");
+$("#tabBtn-campo").onclick = ()=>showTab("campo");
+$("#tabBtn-tank").onclick = ()=>showTab("tank");
+
+/* ppm dynamic fonte input */
+function updatePPMFonte(){
+  const tipo = $("#ppm-fonte-tipo").value;
+  const wrap = $("#ppm-fonte-valor-wrap");
+  if (tipo === "Pó Puro (100%)"){
+    wrap.classList.add("hidden");
+  } else {
+    wrap.classList.remove("hidden");
+    $("#ppm-fonte-valor-lab").textContent =
+      (tipo === "Rótulo (g/L ou g/kg)") ? "Valor do rótulo (ex.: 340, 750)" : "Concentracao da mae (ppm)";
+    $("#ppm-fonte-valor").value = (tipo === "Rótulo (g/L ou g/kg)") ? 340 : 5000;
+  }
+}
+$("#ppm-fonte-tipo").addEventListener("change", updatePPMFonte);
+updatePPMFonte();
+
+/* campo basis toggle */
+function updateCampoBasis(){
+  const basis = $("#campo-basis").value;
+  $("#campo-ia-wrap").classList.toggle("hidden", basis!=="ia");
+}
+$("#campo-basis").addEventListener("change", updateCampoBasis);
+updateCampoBasis();
+
+/* Tankmix rows */
+let tankRowId = 0;
+function makeTankRow(pref={}){
+  tankRowId++;
+  const row = document.createElement("div");
+  row.className = "glass2 rounded-lg p-2 grid grid-cols-12 gap-2 items-end";
+  row.dataset.rowId = tankRowId;
+
+  row.innerHTML = `
+    <div class="col-span-12">
+      <label class="text-xs text-slate-300">Nome do produto</label>
+      <input class="input w-full rounded-md px-2 py-1 mt-1 tank-nome" placeholder="Ex.: Engeo Pleno" value="${pref.nome||""}">
+    </div>
+    <div class="col-span-5">
+      <label class="text-xs text-slate-300">Dose</label>
+      <input type="number" class="input w-full rounded-md px-2 py-1 mt-1 tank-dose" value="${pref.dose||0}" min="0" step="0.1">
+    </div>
+    <div class="col-span-4">
+      <label class="text-xs text-slate-300">Unidade</label>
+      <select class="input w-full rounded-md px-2 py-1 mt-1 tank-unid">
+        <option ${pref.unid==="mL/ha"?"selected":""}>mL/ha</option>
+        <option ${pref.unid==="L/ha"?"selected":""}>L/ha</option>
+        <option ${pref.unid==="g/ha"?"selected":""}>g/ha</option>
+        <option ${pref.unid==="kg/ha"?"selected":""}>kg/ha</option>
+      </select>
+    </div>
+    <div class="col-span-3">
+      <label class="text-xs text-slate-300">Base</label>
+      <select class="input w-full rounded-md px-2 py-1 mt-1 tank-basis">
+        <option value="formulado" ${pref.basis!=="ia"?"selected":""}>Formulado</option>
+        <option value="ia" ${pref.basis==="ia"?"selected":""}>i.a.</option>
+      </select>
+    </div>
+    <div class="col-span-9 tank-ia-wrap hidden">
+      <label class="text-xs text-slate-300">% i.a. no produto</label>
+      <input type="number" class="input w-full rounded-md px-2 py-1 mt-1 tank-ia" placeholder="ex.: 20" value="${pref.iaPct||""}" min="0" max="100" step="0.1">
+    </div>
+    <div class="col-span-3 flex justify-end">
+      <button class="btn btn-danger rounded-md px-2 py-1 text-xs tank-rem">remover</button>
+    </div>
+  `;
+
+  const basisSel = row.querySelector(".tank-basis");
+  const iaWrap = row.querySelector(".tank-ia-wrap");
+  const update = ()=> iaWrap.classList.toggle("hidden", basisSel.value!=="ia");
+  basisSel.addEventListener("change", update);
+  update();
+
+  row.querySelector(".tank-rem").onclick = ()=>{
+    row.remove();
+  };
+
+  return row;
+}
+function addTankRow(pref){
+  $("#tank-prod-list").appendChild(makeTankRow(pref));
+}
+$("#btn-add-prod").onclick = ()=>addTankRow();
+addTankRow({nome:"Produto 1", dose:200, unid:"mL/ha"});
+addTankRow({nome:"Produto 2", dose:1.5, unid:"L/ha"});
+
+/* ============================================================================
+   ACTIONS
+============================================================================ */
+function setOutput(txt){ $("#output").textContent = txt; }
+
+$("#btn-ppm").onclick = ()=>{
+  try{
+    const txt = calcPPM(
+      parseOptNum($("#ppm-meta-ppm").value,0),
+      parseOptNum($("#ppm-meta-vol").value,0),
+      $("#ppm-fonte-tipo").value,
+      parseOptNum($("#ppm-fonte-valor").value,0),
+      $("#ppm-pureza").value,
+      $("#ppm-densidade").value
+    );
+    setOutput(txt);
+  }catch(e){ setOutput("ERRO: " + e.message); }
+};
+
+$("#btn-campo").onclick = ()=>{
+  try{
+    const txt = calcCampo(
+      parseOptNum($("#campo-dose").value,0),
+      $("#campo-unid").value,
+      parseOptNum($("#campo-vazao").value,0),
+      parseOptNum($("#campo-vol-lab").value,0),
+      $("#campo-basis").value,
+      $("#campo-ia-pct").value,
+      $("#campo-pureza").value,
+      $("#campo-densidade").value
+    );
+    setOutput(txt);
+  }catch(e){ setOutput("ERRO: " + e.message); }
+};
+
+$("#btn-tank").onclick = ()=>{
+  try{
+    const prods = $$("#tank-prod-list > div").map(row=>({
+      nome: row.querySelector(".tank-nome").value.trim(),
+      dose: parseOptNum(row.querySelector(".tank-dose").value,0),
+      unid: row.querySelector(".tank-unid").value,
+      basis: row.querySelector(".tank-basis").value,
+      iaPct: row.querySelector(".tank-ia").value
+    })).filter(p=>p.dose>0 || p.nome);
+    if (prods.length===0) throw new Error("Adicione pelo menos um produto.");
+    const txt = calcTankMix(
+      prods,
+      parseOptNum($("#tank-vazao").value,0),
+      parseOptNum($("#tank-vol-lab").value,0),
+    );
+    setOutput(txt);
+  }catch(e){ setOutput("ERRO: " + e.message); }
+};
+
+/* Save buttons */
+function saveCurrent(tipo, titulo){
+  addHist({tipo, titulo, data: nowISO(), texto: $("#output").textContent});
+}
+$("#btn-save-ppm").onclick = ()=>saveCurrent("PPM","Diluição PPM");
+$("#btn-save-campo").onclick = ()=>saveCurrent("Campo","Conversão Campo->Lab");
+$("#btn-save-tank").onclick = ()=>saveCurrent("TankMix","Tank mix Campo->Lab");
+
+/* Copy / PDF */
+$("#btn-copy").onclick = async ()=>{
+  try{
+    await navigator.clipboard.writeText($("#output").textContent);
+  }catch(e){}
+};
+$("#btn-pdf").onclick = ()=>{
+  const text = $("#output").textContent;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"pt", format:"a4"});
+  const margin = 40;
+  const width = doc.internal.pageSize.getWidth() - margin*2;
+  const lines = doc.splitTextToSize(text, width);
+  doc.setFont("courier","normal");
+  doc.setFontSize(10);
+  doc.text(lines, margin, margin);
+  doc.save("protocolo_bioensaio.pdf");
+};
+
+/* History actions */
+$("#btn-clear-hist").onclick = ()=>{
+  localStorage.removeItem(HIST_KEY);
+  renderHist();
+};
+$("#btn-export-json").onclick = ()=>{
+  const hist = loadHist();
+  const blob = new Blob([JSON.stringify(hist, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "historico_bioensaio.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+/* init */
+renderHist();
+</script>
+</body>
+</html>
