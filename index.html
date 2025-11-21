@@ -70,7 +70,64 @@
     .kbd{
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     }
-  </style>
+  
+    /* --- Dark+ redesign overrides (v2.1) --- */
+    :root{
+      --bg: #05060b;
+      --card: rgba(8, 12, 24, 0.86);
+      --card2: rgba(8, 12, 24, 0.65);
+      --text: #e9ecf5;
+      --muted: #9aa3b6;
+      --accent: #7df9ff;
+      --accent2: #b388ff;
+      --danger: #ff6b6b;
+      --ok: #5dffb0;
+    }
+    body{
+      background:
+        radial-gradient(1200px circle at 0% -20%, rgba(125,249,255,0.10), transparent 60%),
+        radial-gradient(900px circle at 110% 0%, rgba(179,136,255,0.12), transparent 55%),
+        radial-gradient(700px circle at 50% 120%, rgba(0,0,0,0.8), transparent 60%),
+        var(--bg);
+    }
+    .glass{
+      box-shadow:
+        0 10px 30px rgba(0,0,0,0.55),
+        inset 0 0 0 1px rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.09);
+    }
+    .pill{
+      transition: transform .12s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease;
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.25));
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+    .pill:hover{ transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0,0,0,0.5); }
+    .pill.active{
+      background: linear-gradient(135deg, rgba(125,249,255,0.25), rgba(179,136,255,0.18));
+      border-color: rgba(125,249,255,0.7);
+      box-shadow: 0 0 0 1px rgba(125,249,255,0.35), 0 8px 20px rgba(0,0,0,0.6);
+    }
+    input, select, textarea{
+      background: rgba(5, 8, 18, 0.9) !important;
+      border-color: rgba(255,255,255,0.12) !important;
+      color: var(--text) !important;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    input:focus, select:focus, textarea:focus{
+      outline: none;
+      border-color: rgba(125,249,255,0.9) !important;
+      box-shadow: 0 0 0 3px rgba(125,249,255,0.15);
+    }
+    .btn{
+      transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.45);
+    }
+    .btn:hover{ transform: translateY(-1px); }
+    pre, code, .output{
+      background: rgba(3, 5, 10, 0.95) !important;
+      border-color: rgba(255,255,255,0.08) !important;
+    }
+</style>
 </head>
 <body class="min-h-screen">
   <div class="max-w-7xl mx-auto px-4 py-6">
@@ -80,7 +137,7 @@
       <aside class="col-span-12 lg:col-span-4 glass rounded-2xl p-4">
         <div class="flex items-center justify-between mb-3">
           <div class="text-lg font-semibold tracking-wide">Configuração</div>
-          <div class="text-sm text-slate-300">V2</div>
+          <div class="text-sm text-slate-300">V2.2</div>
         </div>
 
         <!-- Tabs -->
@@ -315,7 +372,8 @@ function calcPPM(meta_ppm, meta_vol_ml, tipo_fonte, valor_fonte, purezaPct, dens
   lines.push(">>> INSTRUCAO:");
 
   if (tipo_fonte === "Pó Puro (100%)"){
-    let mg_teor = qtd_pegar_ml; // mg
+    // ppm = mg/L; volume final em mL => mg = ppm * (mL/1000)
+    let mg_teor = meta_ppm * (meta_vol_ml/1000); // mg
     let mg_corr = mg_teor / (pureza/100);
     lines.push(`1. PESAR: ${fmt(mg_corr)} mg (miligramas)`);
     if (pureza !== 100) lines.push(`   (corrigido para pureza ${pureza}%)`);
@@ -327,12 +385,13 @@ function calcPPM(meta_ppm, meta_vol_ml, tipo_fonte, valor_fonte, purezaPct, dens
     if (dens !== 1){
       lines.push(`* Densidade informada: ${dens} g/mL (so para referencia)`);
     }
-    lines.push(`1. PIPETAR: ${fmt(vol_prod)} mL`);
+    lines.push(`1. USAR PRODUTO: ${fmt(vol_prod)} mL (se liquido)`);
     if (vol_prod < 1) lines.push(`   (Equivalente a ${fmt(vol_prod*1000)} uL)`);
-    lines.push("   *Se for solido formulado (WG/WP), pesar em gramas.");
-    let vol_agua = meta_vol_ml - vol_prod;
-    lines.push(`2. COMPLETAR com agua ate ${fmt(vol_agua)} mL`);
-  }
+    lines.push(`   ou ${fmt(vol_prod)} g (se WG/WP, pesar).`);
+let vol_agua = meta_vol_ml - vol_prod;
+    lines.push(`2. ADICIONAR agua: ${fmt(vol_agua)} mL`);
+    lines.push(`   (completar ate ${fmt(meta_vol_ml)} mL no total)`);
+}
 
   lines.push("--------------------------------------------------");
   return lines.join("\n");
@@ -430,10 +489,16 @@ function calcTankMix(produtos, vazao, vol_lab){
     }
   });
 
-  let agua = vol_lab - totalVolProdutos;
+    let agua = vol_lab - totalVolProdutos;
+  if (totalVolProdutos > vol_lab){
+    lines.push(`
+ATENCAO: volumes somados de produtos (${fmt(totalVolProdutos)} mL) excedem o volume final.`);
+    lines.push(`Aumente o volume lab ou reduza doses.`);
+  }
   if (agua < 0) agua = 0;
-  lines.push(`\nCompletar com agua ate ${fmt(agua)} mL (ajuste final).`);
-  lines.push("--------------------------------------------------");
+  lines.push(`
+ADICIONAR agua: ${fmt(agua)} mL (completar ate ${fmt(vol_lab)} mL no total).`);
+lines.push("--------------------------------------------------");
   return lines.join("\n");
 }
 
